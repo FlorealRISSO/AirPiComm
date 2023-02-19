@@ -1,9 +1,3 @@
-/* =================================================================== */
-// Progrmame Serveur qui calcule le résultat d'un coup joué à partir
-// des coordonnées reçues de la part d'un client "joueur".
-// Version CONCURRENTE : N clients/joueurs à la fois
-/* =================================================================== */
-
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,128 +6,199 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <time.h>
+#include <assert.h>
+#include <fcntl.h>
 
-typedef int SOCKET;
-typedef struct sockaddr_in SOCKADDR_IN;
-typedef struct sockaddr SOCKADDR;
-#define INVALID_SOCKET -1
-#define SOCKET_ERROR -1
-#define MY_PORT 5555
-#define NB_CLIENT 5
-#define closesocket( socket ) close( socket );
+#include "job.h"
 
-typedef struct Jeu_s{
-  int taille;
-  int x_tresor;
-  int y_tresor;
-} Jeu;
 
-/**
-  Creation d'un tableau de jeu
-*/
-void initJeu(Jeu * plateauJeu,int taille){
-  plateauJeu->taille=taille;
-  plateauJeu->x_tresor=1+rand()%(taille);
-  plateauJeu->y_tresor=1+rand()%(taille);
+// return == 1 PASS
+// return == 0 FAIL
+int case_JFILE(int socket, Packet *packet) {
+  char *filename = tmpnam(NULL);
+  LOG("create : %s\n", filename);
+  return FAIL;
+
+  FILE* file = fopen(filename, "w+");
+  if (file == NULL) {
+    PERROR("fopen()");
+    return FAIL;
+  }
+
+  if (recv_file(socket, packet, file) == FAIL) {
+    EPRINTF("%s\n", "recv_file");
+    fclose(file);
+    return FAIL;
+  }
+
+  fclose(file);
+  return PASS;
+}
+
+// return == 1 PASS
+// return == 0 FAIL
+int case_JCMD(int socket, Packet *packet) {
+  FILE *console = recv_cmd(packet);
+
+  LOG("$ %s\n", packet->data);
+  if (console == NULL) {
+    EPRINTF("%s\n", "recv_cmd");
+    return FAIL;
+  }
+
+  if (send_file(socket, console) == FAIL) {
+    EPRINTF("%s\n", "send_file");
+    return FAIL;
+  }
+
+  pclose(console);
+  return PASS;
+}
+
+// return > 0 when OK
+// return == 0 when J_CLOSE
+// return < 0 when error
+int recv_job(int socket) {
+  Packet packet;
+
+  // Receive
+  if ((recv(socket, &packet, sizeof(Packet), NO_FLAG)) < 0) {
+    PERROR("recv()");
+    return -1;
+  }
+
+  JobType type = packet.type;
+  int err = 0;
+  switch (type) {
+    case J_FILE:
+      LOG("%s\n", "Downloading a file...");
+      err = case_JFILE(socket, &packet);
+      break;
+    case J_CMD:
+      LOG("%s\n", "Executing a cmd");
+      err = case_JCMD(socket, &packet);
+      break;
+    case J_CLOSE:
+      return 0;
+    default:
+      return -1;
+  }
+
+  return err == FAIL ? -1 : 1;
 }
 
 
+void run(int socket){
+  pid = getpid();
+  LOG("%s\n", "New connexion established");
+  int has_work = -1;
 
-/* =================================================================== */
-/* FONCTION PRINCIPALE : SERVEUR CONCURRENT                            */
-/* =================================================================== */
-
-
-void run(int csock){
-  srand(time(NULL));
-  pid_t pid=getpid();
-  Jeu plateauJeu;
-  initJeu(&plateauJeu,N);
-  printf("[%d]taille=%d,x=%d,y=%d\n",pid,plateauJeu.taille,plateauJeu.x_tresor,plateauJeu.y_tresor);
-  int resultat=-1;
   do {
-    //Dans la boucle
-    /* Réception du resultat du coup (recv) */
-    char recu[6];
-    if((recv(csock,recu,6,0))<0){
-      perror("recv()");
-      exit(99);
-    }
-    /* Deserialisation du résultat en deux entiers */
-    int xp,yp;
-    sscanf(recu,"%d %d",&xp,&yp);
-    #if PRINTINFO==1
-      printf("[%d]Valeur recu : x{%d} y{%d}\n",pid,xp,yp);
-    #endif
-    /* Recherche du résultat dans le plateau */
-    int resultat = recherche_tresor(plateauJeu.taille,plateauJeu.x_tresor,plateauJeu.y_tresor,xp,yp);
+    LOG("%s\n", "Waiting for a new job");
+    has_work = recv_job(socket);
+  } while(has_work > 0);
 
-    char message[2]; // Taille max d'un message
-    sprintf(message,"%d",resultat);
-    #if PRINTINFO==1
-      printf("[%d]Valeur envoyé : message{%s}\n",pid,message);
-    #endif
-    /* Envoi de la requête au serveur (send) */
-    if(send(csock,message,2,0)<0){
-      perror("send()");
-      exit(99);
-    }
-  } while(resultat);
-  closesocket(csock);
+  if (has_work < 0) {
+    EPRINTF("%s\n", "recv_job()");
+  }
+
+  LOG("%s\n", "The connection has been closed");
+  close(socket);
   exit(0);
 }
 
+void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client) {
+  char *stopped;
 
+  if(argc < 3 || argc > 5) {
+    goto usage;
+  }
 
+  *port = strtol(argv[1], &stopped, 10);
+  if (*stopped != '\0') {
+    EPRINTF("Bad input: <%s> isn't a valid port\n", argv[1]);
+    goto usage;
+  }
+
+  *nb_client = strtol(argv[2], &stopped, 10);
+  if (*stopped != '\0') {
+    EPRINTF("Bad input: <%s> isn't a number of client\n", argv[2]);
+    goto usage;
+  }
+
+  if (argc == 4) {
+    if (argv[3][0] == '-' && argv[3][1] == 'l') {
+      f_log = 1;
+    }
+    else {
+      EPRINTF("Bad input: <%s> isn't a valid option\n", argv[3]);
+      goto usage;
+    }
+  }
+
+  return;
+usage:
+    EPRINTF("Usage: %s <port: uint16_t> <nb_client: uint32_t> [-l : server log]\n", argv[0]);
+    exit(1);
+}
 
 int main(int argc, char **argv) {
-  //_______________________________
-  SOCKET sock;
-  SOCKADDR_IN sin;
-  SOCKADDR_IN csin;
-  SOCKET csock;
-  //Création du socket
-  sock=socket(AF_INET,SOCK_STREAM,0);
-  if(sock==INVALID_SOCKET){
-    perror("socket()");
+  pid = getpid();
+  uint32_t nb_client;
+  uint16_t port;
+  parse_arg(argc, argv, &port, &nb_client);
+
+  int main_socket;
+  sockaddr_in main_sin;
+  int client_socket;
+
+  main_socket = socket(AF_INET, SOCK_STREAM, NO_FLAG);
+  if (main_socket == INVALID_SOCKET){
+    PERROR("socket()");
     exit(99);
   }
-  //Création de l'interface d'écoute
-  sin.sin_addr.s_addr=htonl(INADDR_ANY); //Accepte toute les ips
-  sin.sin_family=AF_INET;
-  sin.sin_port=htons(MY_PORT);
-  if(bind(sock,(SOCKADDR*)&sin,sizeof sin)==SOCKET_ERROR){
-    perror("bind()");
+
+  // Listen
+  main_sin.sin_addr.s_addr = htonl(INADDR_ANY); //Accepte toute les ips
+  main_sin.sin_family = AF_INET;
+  main_sin.sin_port = htons(port);
+  if (bind(main_socket, (sockaddr*) &main_sin, sizeof main_sin) == SOCKET_ERROR) {
+    PERROR("bind()");
     exit(98);
   }
-  while(1){
-    //Ecoute d'une connexion
-    if(listen(sock,NB_CLIENT)==SOCKET_ERROR){
-      perror("listen()");
+
+  // Infinit loop
+  for(;;) {
+    // Waiting for a connexion
+
+
+    LOG("%s\n", "Waiting for a new client");
+    if (listen(main_socket, nb_client) == SOCKET_ERROR) {
+      PERROR("listen()");
       exit(97);
     }
 
-    //Connexion avec un client
-    unsigned int sinsize=sizeof csin;
-    if((csock=accept(sock,(SOCKADDR*)&csin,&sinsize))==INVALID_SOCKET){
-      perror("accept()");
+    // Init a connexion with a new client
+    unsigned int sin_size = sizeof main_sin;
+    if ((client_socket = accept(main_socket, (sockaddr*) &main_sin, &sin_size)) == INVALID_SOCKET) {
+      PERROR("accept()");
       exit(96);
     }
-    switch (fork()) { // Cree un sous fils pour gerer le client
-      case -1: //Si erreur
-        perror("fork()");
+
+    switch (fork()) {
+      case -1:
+        PERROR("fork()");
         exit(99);
-      case 0: // Cas fils
-        closesocket(sock); // Ferme le socket d'ecoute, il lui est inutile
-        run(csock); // Lance la fonction de jeu
-        exit(0); // Se tue bien
-      default: //Cas pere
+      case 0:
+        close(main_socket);
+        run(client_socket);
+        exit(0);
+      default:
         break;
     }
-    closesocket(csock); // Ferme le socket du fils car il lui est inutile
+    close(client_socket);
   }
-    closesocket(sock);
-    return 0;
+  close(main_socket);
+  return 0;
 } // end main
 

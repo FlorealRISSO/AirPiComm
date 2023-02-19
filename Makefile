@@ -1,8 +1,11 @@
 .PHONY: client server
 
-CFLAGS=-Wall -Wextra -Wpedantic -DDEBUG -g
+CFLAGS= -std=gnu11 -Wall -Wextra -Wpedantic -DDEBUG -g
 
 all: client server
-client: 
+client:
 	gcc $(CFLAGS) -o client client.c
+
+server:
+	gcc $(CFLAGS) -o server server.c
 	
