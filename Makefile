@@ -1,6 +1,6 @@
 .PHONY: client server
 
-CFLAGS= -std=gnu99 -Wall -Wextra -Wpedantic -DDEBUG -g
+CFLAGS= -std=gnu99 -Wall -Wextra -Wpedantic -DDEBUG -g #-lbluetooth
 
 all: client server
 client:

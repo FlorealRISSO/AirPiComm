@@ -8,6 +8,9 @@
 #include <fcntl.h>
 #include <assert.h>
 
+//#include <bluetooth/bluetooth.h>
+//#include <bluetooth/rfcomm.h>
+
 #include "job.h"
 
 #define IS_PARAM(str) (str[0] == '-' && str[1] != '\0' && str[2] == '\0')
@@ -78,7 +81,7 @@ int send_job(int socket, Job *job)
 }
 void usage()
 {
-    printf("Usage: %s <addr> <port> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
+   fprintf(stderr, "Usage: %s <addr> <port> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
 }
 
 void parse_args(unsigned int argc, char **argv, Job jobs[argc], size_t *nb_job)

@@ -12,6 +12,7 @@
 
 #include "job.h"
 
+static char *arg0;
 
 
 
@@ -122,43 +123,50 @@ void run(int socket)
     exit(0);
 }
 
+void usage() 
+{
+     fprintf(stderr, "Usage: %s <MODE> <port> <max_client>\n", arg0);
+     fprintf(stderr, " MODE:\n");
+     fprintf(stderr, "  -b  bluetooth\n");
+     fprintf(stderr, "  -t  tcp\n");
+     exit(1);
+}
+
 void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client)
 {
     char *stopped;
 
     if(argc < 3 || argc > 5) {
-        goto usage;
+        usage();
     }
 
     *port = strtol(argv[1], &stopped, 10);
     if (*stopped != '\0') {
-        EPRINTF("Bad input: <%s> isn't a valid port\n", argv[1]);
-        goto usage;
+        fprintf(stderr, "Bad input: <%s> isn't a valid port\n", argv[1]);
+        usage();
     }
 
     *nb_client = strtol(argv[2], &stopped, 10);
     if (*stopped != '\0') {
-        EPRINTF("Bad input: <%s> isn't a number of client\n", argv[2]);
-        goto usage;
+        fprintf(stderr, "Bad input: <%s> isn't a number of client\n", argv[2]);
+        usage();
     }
 
     if (argc == 4) {
         if (argv[3][0] == '-' && argv[3][1] == 'l') {
             f_log = 1;
         } else {
-            EPRINTF("Bad input: <%s> isn't a valid option\n", argv[3]);
-            goto usage;
+            fprintf(stderr, "Bad input: <%s> isn't a valid option\n", argv[3]);
+	    usage();
         }
     }
 
     return;
-usage:
-    EPRINTF("Usage: %s <port: uint16_t> <nb_client: uint32_t> [-l : server log]\n", argv[0]);
-    exit(1);
 }
 
 int main(int argc, char **argv)
 {
+    arg0 = argv[0];
     pid = getpid();
     uint32_t nb_client;
     uint16_t port;
