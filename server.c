@@ -9,11 +9,12 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <time.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
 
 #include "job.h"
 
 static char *arg0;
-
 
 
 void timestamp_filename(char filename[64])
@@ -125,10 +126,10 @@ void run(int socket)
 
 void usage() 
 {
-     fprintf(stderr, "Usage: %s <MODE> <port> <max_client>\n", arg0);
+     fprintf(stderr, "Usage: %s <MODE> <port> <max_client> [-l : log]\n", arg0);
      fprintf(stderr, " MODE:\n");
-     fprintf(stderr, "  -b  bluetooth\n");
-     fprintf(stderr, "  -t  tcp\n");
+     fprintf(stderr, "  -b :  bluetooth\n");
+     fprintf(stderr, "  -i :  ip\n");
      exit(1);
 }
 
@@ -136,24 +137,37 @@ void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client)
 {
     char *stopped;
 
-    if(argc < 3 || argc > 5) {
+    if(argc < 4 || argc > 5) {
         usage();
     }
 
-    *port = strtol(argv[1], &stopped, 10);
+    if (argv[1][0] == '-') {
+        if (argv[1][1] == 'b') {
+            f_mode = BLUETOOTH;
+        } else if (argv[1][1] == 'i') {
+            f_mode = IP;
+        } else {
+            fprintf(stderr, "Bad input: <%s> isn't a valid MODE\n", argv[1]);
+            usage();
+        }
+    } else {
+        fprintf(stderr, "Bad input: <%s> isn't a valid MODE\n", argv[1]);
+        usage();
+    }
+    *port = strtol(argv[2], &stopped, 10);
     if (*stopped != '\0') {
-        fprintf(stderr, "Bad input: <%s> isn't a valid port\n", argv[1]);
+        fprintf(stderr, "Bad input: <%s> isn't a valid port\n", argv[2]);
         usage();
     }
 
-    *nb_client = strtol(argv[2], &stopped, 10);
+    *nb_client = strtol(argv[3], &stopped, 10);
     if (*stopped != '\0') {
-        fprintf(stderr, "Bad input: <%s> isn't a number of client\n", argv[2]);
+        fprintf(stderr, "Bad input: <%s> isn't a number of client\n", argv[3]);
         usage();
     }
 
-    if (argc == 4) {
-        if (argv[3][0] == '-' && argv[3][1] == 'l') {
+    if (argc == 5) {
+        if (argv[4][0] == '-' && argv[4][1] == 'l') {
             f_log = 1;
         } else {
             fprintf(stderr, "Bad input: <%s> isn't a valid option\n", argv[3]);
@@ -164,6 +178,8 @@ void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client)
     return;
 }
 
+
+
 int main(int argc, char **argv)
 {
     arg0 = argv[0];
@@ -172,23 +188,34 @@ int main(int argc, char **argv)
     uint16_t port;
     parse_arg(argc, argv, &port, &nb_client);
 
+    sockaddr_in ip_main_sin = {0};
+    sockaddr_rc bt_main_sin = {0};
+
+    sockaddr_in ip_client_sin = {0};
+    sockaddr_rc bt_client_sin = {0};
+
+    sockaddr *main_sin = NULL;
+    sockaddr *client_sin = NULL;
+
+    size_t size_sin = {0};
+    size_t client_size_sin = {0};
+
     int main_socket;
-    sockaddr_in main_sin;
     int client_socket;
 
-    main_socket = socket(AF_INET, SOCK_STREAM, NO_FLAG);
-    if (main_socket == INVALID_SOCKET) {
-        PERROR("socket()");
+    if (setup(&main_sin, &main_socket, &size_sin, &ip_main_sin, &bt_main_sin, port) < 0) {
         exit(99);
     }
 
-    // Listen
-    main_sin.sin_addr.s_addr = htonl(INADDR_ANY); //Accepte toute les ips
-    main_sin.sin_family = AF_INET;
-    main_sin.sin_port = htons(port);
-    if (bind(main_socket, (sockaddr *) &main_sin, sizeof main_sin) == SOCKET_ERROR) {
+    if ((bind(main_socket, main_sin, size_sin)) == SOCKET_ERROR) {
         PERROR("bind()");
-        exit(98);
+        exit(99);
+    }
+
+    if (f_mode == BLUETOOTH) {
+        client_sin = (sockaddr*) &bt_client_sin;
+    } else {
+        client_sin = (sockaddr*) &ip_client_sin;    
     }
 
     // Infinit loop
@@ -203,10 +230,14 @@ int main(int argc, char **argv)
         }
 
         // Init a connexion with a new client
-        unsigned int sin_size = sizeof main_sin;
-        if ((client_socket = accept(main_socket, (sockaddr *) &main_sin, &sin_size)) == INVALID_SOCKET) {
+        if ((client_socket = accept(main_socket, client_sin, &client_size_sin)) == INVALID_SOCKET) {
             PERROR("accept()");
             exit(96);
+        }
+
+        if (client_size_sin != size_sin) {
+            EPRINTF("%s\n", "Error, not the same protocol");
+            exit(99);
         }
 
         switch (fork()) {

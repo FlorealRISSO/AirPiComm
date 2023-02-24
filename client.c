@@ -8,8 +8,9 @@
 #include <fcntl.h>
 #include <assert.h>
 
-//#include <bluetooth/bluetooth.h>
-//#include <bluetooth/rfcomm.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
+#include <netdb.h>
 
 #include "job.h"
 
@@ -81,7 +82,11 @@ int send_job(int socket, Job *job)
 }
 void usage()
 {
-   fprintf(stderr, "Usage: %s <addr> <port> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
+   fprintf(stderr, "Usage: %s MODE <addr> <port> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
+   fprintf(stderr, "MODE:\n");
+   fprintf(stderr, "  -b : bluetooth\n");
+   fprintf(stderr, "  -i : ip\n");
+   exit(1);
 }
 
 void parse_args(unsigned int argc, char **argv, Job jobs[argc], size_t *nb_job)
@@ -89,7 +94,21 @@ void parse_args(unsigned int argc, char **argv, Job jobs[argc], size_t *nb_job)
     JobType type = UNKNOWN;
     *nb_job = 0;
 
-    for (unsigned int i = 3; i < argc; i++) {
+    if (argv[1][0] == '-') {
+        if (argv[1][1] == 'b') {
+            f_mode = BLUETOOTH;
+        } else if (argv[1][1] == 'i') {
+            f_mode = IP;
+        } else {
+            fprintf(stderr, "Bad input: <%s> isn't a valid MODE\n", argv[1]);
+            usage();
+        }
+    } else {
+        fprintf(stderr, "Bad input: <%s> isn't a valid MODE\n", argv[1]);
+        usage();
+    }
+
+    for (unsigned int i = 4; i < argc; i++) {
         char *arg = argv[i];
         if (IS_PARAM(arg)) {
             switch (arg[1]) {
@@ -128,14 +147,14 @@ int main(int argc, char **argv)
     pid = getpid();
     arg0 = argv[0];
 
-    if (argc < 3) {
+    if (argc < 4) {
         usage();
         exit(1);
     }
 
-    char *addr = argv[1];
+    char *addr = argv[2];
     char *stopped;
-    uint16_t port = strtol(argv[2], &stopped, 10);
+    uint16_t port = strtol(argv[3], &stopped, 10);
 
     if (*stopped != '\0') {
         EPRINTF("Bad input: <%s> isn't a valid port\n", argv[2]);
@@ -153,19 +172,29 @@ int main(int argc, char **argv)
         exit(77);
     }
 
-    int sock = socket(AF_INET,SOCK_STREAM,0);
-    if(sock == INVALID_SOCKET) {
-        PERROR("socket()");
+    
+    sockaddr_in ip_sin = {0};
+    sockaddr_rc bt_sin = {0};
+
+    sockaddr *sin = NULL;
+    size_t size_sin = {0};
+    int sock = -1;
+
+    if (setup(&sin, &sock, &size_sin, &ip_sin, &bt_sin, port) < 0) {
         exit(99);
     }
-
-    sockaddr_in sin;
-    sin.sin_addr.s_addr = inet_addr(addr);
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
+    
+    switch (f_mode) {
+        case IP:
+            ip_sin.sin_addr.s_addr = inet_addr(addr);
+            break;    
+        case BLUETOOTH:
+            str2ba(argv[2], &bt_sin.rc_bdaddr);
+            break;
+    }
 
     LOG("%s : %s:%s\n", "Try to connect to ", argv[1], argv[2]);
-    if(connect(sock, (sockaddr *) &sin, sizeof(sockaddr)) == SOCKET_ERROR) {
+    if (connect(sock, sin, size_sin) == SOCKET_ERROR) {
         PERROR("connect()");
         exit(98);
     }

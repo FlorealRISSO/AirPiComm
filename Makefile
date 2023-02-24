@@ -1,6 +1,6 @@
 .PHONY: client server
 
-CFLAGS= -std=gnu99 -Wall -Wextra -Wpedantic -DDEBUG -g #-lbluetooth
+CFLAGS= -std=gnu99 -Wall -Wextra -Wpedantic -DDEBUG -g -lbluetooth
 
 all: client server
 client:
@@ -11,4 +11,7 @@ server:
 
 format:
 	astyle --style=kr -xf -s4 -k3 -n -Z -Q *.[ch]
+
+clean: 
+	rm -f client server
 
