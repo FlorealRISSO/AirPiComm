@@ -126,7 +126,7 @@ void run(int socket)
 
 void usage() 
 {
-     fprintf(stderr, "Usage: %s <MODE> <port> <max_client> [-l : log]\n", arg0);
+     fprintf(stderr, "Usage: %s <MODE> <port/chan> <max_client> [-l : log]\n", arg0);
      fprintf(stderr, " MODE:\n");
      fprintf(stderr, "  -b :  bluetooth\n");
      fprintf(stderr, "  -i :  ip\n");

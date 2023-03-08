@@ -82,7 +82,7 @@ int send_job(int socket, Job *job)
 }
 void usage()
 {
-   fprintf(stderr, "Usage: %s MODE <addr> <port> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
+   fprintf(stderr, "Usage: %s MODE <addr> <port/chan> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
    fprintf(stderr, "MODE:\n");
    fprintf(stderr, "  -b : bluetooth\n");
    fprintf(stderr, "  -i : ip\n");
