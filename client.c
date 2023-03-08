@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     uint16_t port = strtol(argv[3], &stopped, 10);
 
     if (*stopped != '\0') {
-        EPRINTF("Bad input: <%s> isn't a valid port\n", argv[2]);
+        EPRINTF("Bad input: <%s> isn't a valid port\n", argv[3]);
         usage();
         exit(2);
     }
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
             break;
     }
 
-    LOG("%s : %s:%s\n", "Try to connect to ", argv[1], argv[2]);
+    LOG("%s : %s:%s\n", "Try to connect to ", argv[2], argv[3]);
     if (connect(sock, sin, size_sin) == SOCKET_ERROR) {
         PERROR("connect()");
         exit(98);
