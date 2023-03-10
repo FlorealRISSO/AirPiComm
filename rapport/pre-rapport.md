@@ -1,20 +1,16 @@
-# Quelques informations
+# Rapport
 
-Le contenu nécessaire pour le rapport:
+> Floréal Risso et Alexis Paronnaud \
+> SECIL
 
-- Faire une démonstration étape par étape de la connexion à l'envoi des donneés.
-    - Inventer un petit scénario, dans lequel nous mettons en scène cette démonstration. (contexte + explication)
-    - Capture d'écran des étapes.
-    - Copie du terminal.
-    - Preuve de la bonne réception des donnés.
+## Contenu
 
-- Expliqué nos logiciels et script.
-    - Fonctionnement du logiciel en C (sender).
-    - Fonctionnement des scripts.
-    - Explication de l'alchimie entre les logiciels.
-
-- Faire une archive des codes (avec un makefile).
-
+- Explication des programmes
+  - Sender
+  - Scripts
+- Démonstration
+  - Wifi
+  - Bluetooth
 
 ## Explication
 
@@ -163,7 +159,7 @@ pi
 
 ## Démonstration
 
-Idée de démonstration, soit rasberry A (rA) un système embarqué (caméra de surveillance par exemple),
+Scénario de démonstration, soit rasberry A (rA) un système embarqué (caméra de surveillance par exemple),
 soit rasberry B (rB) un ordintateur depuis lequel on veut controller le rA.
 
 Nous supposons que le script qui configure le réseau en "ad hoc" se lance automatiquement au demarrage du rA,
