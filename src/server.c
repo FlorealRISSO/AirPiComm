@@ -124,13 +124,13 @@ void run(int socket)
     exit(0);
 }
 
-void usage() 
+void usage()
 {
-     fprintf(stderr, "Usage: %s <MODE> <port/chan> <max_client> [-l : log]\n", arg0);
-     fprintf(stderr, " MODE:\n");
-     fprintf(stderr, "  -b :  bluetooth\n");
-     fprintf(stderr, "  -i :  ip\n");
-     exit(1);
+    fprintf(stderr, "Usage: %s <MODE> <port/chan> <max_client> [-l : log]\n", arg0);
+    fprintf(stderr, " MODE:\n");
+    fprintf(stderr, "  -b :  bluetooth\n");
+    fprintf(stderr, "  -i :  ip\n");
+    exit(1);
 }
 
 void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client)
@@ -171,7 +171,7 @@ void parse_arg(int argc, char **argv, uint16_t *port, uint32_t *nb_client)
             f_log = 1;
         } else {
             fprintf(stderr, "Bad input: <%s> isn't a valid option\n", argv[3]);
-	    usage();
+            usage();
         }
     }
 
@@ -213,9 +213,9 @@ int main(int argc, char **argv)
     }
 
     if (f_mode == BLUETOOTH) {
-        client_sin = (sockaddr*) &bt_client_sin;
+        client_sin = (sockaddr *) &bt_client_sin;
     } else {
-        client_sin = (sockaddr*) &ip_client_sin;    
+        client_sin = (sockaddr *) &ip_client_sin;
     }
 
     // Infinit loop

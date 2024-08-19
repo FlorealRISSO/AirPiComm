@@ -167,13 +167,14 @@ FILE *recv_cmd(Packet *packet)
     return popen((char *) packet->data, "r");
 }
 
-int setup(sockaddr **ret_sin, int *ret_socket, size_t* size_sin, sockaddr_in *ip_sin, sockaddr_rc *bt_sin, uint16_t port) {
+int setup(sockaddr **ret_sin, int *ret_socket, size_t *size_sin, sockaddr_in *ip_sin, sockaddr_rc *bt_sin, uint16_t port)
+{
     int main_socket = -1;
     if (f_mode == BLUETOOTH) {
         main_socket = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
         if (main_socket == INVALID_SOCKET) {
             PERROR("socket()");
-            return INVALID_SOCKET; 
+            return INVALID_SOCKET;
         }
 
         // Listen
@@ -181,7 +182,7 @@ int setup(sockaddr **ret_sin, int *ret_socket, size_t* size_sin, sockaddr_in *ip
         bt_sin->rc_bdaddr = *BDADDR_ANY;
         bt_sin->rc_channel = (uint8_t) port;
 
-        *ret_sin = (sockaddr*) bt_sin;
+        *ret_sin = (sockaddr *) bt_sin;
         *ret_socket = main_socket;
         *size_sin = sizeof(sockaddr_rc);
         return 0;
@@ -190,7 +191,7 @@ int setup(sockaddr **ret_sin, int *ret_socket, size_t* size_sin, sockaddr_in *ip
         main_socket = socket(AF_INET, SOCK_STREAM, NO_FLAG);
         if (main_socket == INVALID_SOCKET) {
             PERROR("socket()");
-            return INVALID_SOCKET; 
+            return INVALID_SOCKET;
         }
 
         // Listen
@@ -198,16 +199,16 @@ int setup(sockaddr **ret_sin, int *ret_socket, size_t* size_sin, sockaddr_in *ip
         ip_sin->sin_family = AF_INET;
         ip_sin->sin_port = htons(port);
 
-        *ret_sin = (sockaddr*)ip_sin;
+        *ret_sin = (sockaddr *)ip_sin;
         *ret_socket = main_socket;
         *size_sin = sizeof(sockaddr_in);
         return 0;
 
     } else {
-        EPRINTF("%s\n", "Unexpected behavior");    
+        EPRINTF("%s\n", "Unexpected behavior");
         exit(99);
     }
-    EPRINTF("%s\n", "Unexpected behavior");    
+    EPRINTF("%s\n", "Unexpected behavior");
     exit(99);
 }
 #endif // ! __JOB__H__

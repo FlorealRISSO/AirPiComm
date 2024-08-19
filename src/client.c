@@ -82,11 +82,11 @@ int send_job(int socket, Job *job)
 }
 void usage()
 {
-   fprintf(stderr, "Usage: %s MODE <addr> <port/chan> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
-   fprintf(stderr, "MODE:\n");
-   fprintf(stderr, "  -b : bluetooth\n");
-   fprintf(stderr, "  -i : ip\n");
-   exit(1);
+    fprintf(stderr, "Usage: %s MODE <addr> <port/chan> [-f <file>] [-c <command>] [-l : log enable]\n", arg0);
+    fprintf(stderr, "MODE:\n");
+    fprintf(stderr, "  -b : bluetooth\n");
+    fprintf(stderr, "  -i : ip\n");
+    exit(1);
 }
 
 void parse_args(unsigned int argc, char **argv, Job jobs[argc], size_t *nb_job)
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
         exit(77);
     }
 
-    
+
     sockaddr_in ip_sin = {0};
     sockaddr_rc bt_sin = {0};
 
@@ -183,14 +183,14 @@ int main(int argc, char **argv)
     if (setup(&sin, &sock, &size_sin, &ip_sin, &bt_sin, port) < 0) {
         exit(99);
     }
-    
+
     switch (f_mode) {
-        case IP:
-            ip_sin.sin_addr.s_addr = inet_addr(addr);
-            break;    
-        case BLUETOOTH:
-            str2ba(argv[2], &bt_sin.rc_bdaddr);
-            break;
+    case IP:
+        ip_sin.sin_addr.s_addr = inet_addr(addr);
+        break;
+    case BLUETOOTH:
+        str2ba(argv[2], &bt_sin.rc_bdaddr);
+        break;
     }
 
     LOG("%s : %s:%s\n", "Try to connect to ", argv[2], argv[3]);
